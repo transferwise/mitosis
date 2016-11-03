@@ -1,0 +1,53 @@
+plugins {
+    id 'com.jfrog.bintray' version '1.7.1'
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'maven-publish'
+
+jar {
+    baseName = 'mitosis'
+    version =  '1.0.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            groupId 'com.transferwise'
+            artifactId 'mitosis'
+            version '1.0.0'
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    publications = ['maven']
+    override = true
+    pkg {
+        repo = 'maven'
+        name = 'mitosis'
+        userOrg = 'transferwise'
+        licenses = ['MIT']
+        vcsUrl = 'https://github.com/transferwise/mitosis.git'
+        version {
+            name = '1.0.0'
+        }
+    }
+}
+
+dependencies {
+    compile 'javax.servlet:javax.servlet-api:3.1.0'
+    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.1'
+}
