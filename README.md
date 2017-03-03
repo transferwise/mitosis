@@ -1,20 +1,20 @@
-# Mitosis
+# Mitosis ![](https://circleci.com/gh/transferwise/mitosis/tree/master.svg?style=shield&circle-token=e4edd781ef41072d705e58afe8fe17b79a9d4743)
 
 A/B traffic split servlet filter.
 
 ## Installation
 
-Add the dependency in your gradle file.
+Just add the following configuration to your `build.gradle` file
 
-```groovy
-repositories {
-    maven {
-        url 'https://dl.bintray.com/transferwise/maven'
+```gradle
+allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
     }
 }
 
 dependencies {
-    compile 'com.transferwise:mitosis:1.0.0'
+    compile 'com.github.transferwise:mitosis:1.0.0'
 }
 ```
 
