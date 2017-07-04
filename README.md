@@ -35,6 +35,20 @@ public Filter experimentFilter() {
 
 ## Usage
 
+In Spring controllers.
+
+```java
+@RequestMapping("/do-something")
+public String doSomething(@RequestAttribute("experiments") Map<String, String> experiments) {
+    if (experiments.get("test").equals("a")) {
+        return goForAVariant();
+    }
+    if (experiments.get("test").equals("b")) {
+        return goForBVariant();
+    }
+}
+```
+
 In Thymeleaf templates.
 
 ```html
