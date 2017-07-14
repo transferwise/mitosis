@@ -1,4 +1,4 @@
-# Mitosis ![](https://circleci.com/gh/transferwise/mitosis/tree/master.svg?style=shield&circle-token=e4edd781ef41072d705e58afe8fe17b79a9d4743)
+# Mitosis [![CircleCI](https://circleci.com/gh/transferwise/mitosis/tree/master.svg?style=shield)](https://circleci.com/gh/transferwise/mitosis/tree/master)
 
 A/B traffic split servlet filter.
 
