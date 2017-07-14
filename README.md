@@ -41,10 +41,10 @@ In Spring controllers.
 @RequestMapping("/do-something")
 public String doSomething(@RequestAttribute("experiments") Map<String, String> experiments) {
     if (experiments.get("test").equals("a")) {
-        return goForAVariant();
+        return goForVariantA();
     }
     if (experiments.get("test").equals("b")) {
-        return goForBVariant();
+        return goForVariantB();
     }
 }
 ```
@@ -59,6 +59,16 @@ In Thymeleaf templates.
 <div th:if="${experiments['test'] == 'b'}">
     This is the B version
 </div>
+
+<script th:inline="javascript">
+    var experiments = [[${experiments}]];
+    if (experiments['test'] === 'a') {
+        goForVariantA();
+    }
+    if (experiments['test'] === 'b') {
+        goForVariantB();
+    }
+</script>
 ```
 
 ## Advanced use
