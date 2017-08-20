@@ -27,7 +27,7 @@ If we wanted to [uniformly distribute](https://en.wikipedia.org/wiki/Uniform_dis
 public Filter experimentFilter() {
     ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
 
-    filter.prepare("test", Arrays.asList("a", "b"));
+    filter.prepare("test", asList("a", "b"));
 
     return filter;
 }
@@ -82,8 +82,8 @@ In an experiment configuration like the following
 public Filter experimentFilter() {
     ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
 
-    filter.prepare("test1", Arrays.asList("a", "b"));
-    filter.prepare("test2", Arrays.asList("c", "d"));
+    filter.prepare("test1", asList("a", "b"));
+    filter.prepare("test2", asList("c", "d"));
 
     return filter;
 }
@@ -108,11 +108,17 @@ Let's imagine you want to run your test only for people visiting some urls start
 public Filter experimentFilter() {
     ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
 
-    filter.prepare("test", Arrays.asList("a", "b"), r -> r.getRequestURI().contains("/path"));
+    filter.prepare("test", asList("a", "b"), r -> r.getRequestURI().contains("/path"));
 
     return filter;
 }
 
 ``` 
  
-When using lambda functions, the experiment variant will be assigned only if the function returns `true`. In other case no variant will be assigned, so you need to handle within your logic.
+When using lambda functions, the experiment variant will be assigned only if the function returns `true`. **Otherwise, no variant will be assigned**, so you need to handle within your logic.
+
+Mitosis provides a handful request filters that can be combined at will. If we wanted to assign variants only to english-speaking users, excluding Googlebot crawler so our experiment won't affect SEO, we can configure the experiment in the following way
+
+```java
+filter.prepare("test", asList("a", "b"), languageEquals("en").and(userAgentContains("googlebot").negate()));
+```
