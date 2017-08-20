@@ -27,6 +27,10 @@ class ExperimentFilterSpec extends Specification {
         response = createResponseMock()
     }
 
+    def 'it creates an experiment filter'() {
+        expect: ExperimentFilter.defaults()
+    }
+
     @Unroll
     def 'experiment name #name should be invalid'() {
         when: filter.prepare(name, [])

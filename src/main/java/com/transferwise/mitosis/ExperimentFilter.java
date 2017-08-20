@@ -34,6 +34,10 @@ public class ExperimentFilter implements Filter {
         this.requestParameter = requestParameter;
     }
 
+    public static ExperimentFilter defaults() {
+        return new ExperimentFilter(3600 * 24 * 30, "ab", "experiments", "activate");
+    }
+
     public void prepare(String name, List<String> variants) {
         prepare(name, variants, null);
     }
