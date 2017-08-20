@@ -14,7 +14,7 @@ allprojects {
 }
 
 dependencies {
-    compile 'com.github.transferwise:mitosis:1.0.0'
+    compile 'com.github.transferwise:mitosis:1.0.1'
 }
 ```
 
