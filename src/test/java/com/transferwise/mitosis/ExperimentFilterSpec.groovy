@@ -19,7 +19,7 @@ class ExperimentFilterSpec extends Specification {
     HttpServletResponse response
     Cookie cookie = new Cookie(COOKIE_NAME, 'irrelevant')
     Map<String, String> experiments = [:]
-    String parameter = ""
+    String parameter = ''
 
     def setup() {
         filter = new ExperimentFilter(3600, COOKIE_NAME, REQUEST_ATTRIBUTE, REQUEST_PARAMETER);
@@ -153,12 +153,12 @@ class ExperimentFilterSpec extends Specification {
 
     private setupCookie(Map map) {
         cookie.value = URLEncoder.encode(map
-                .collect { it.key + ExperimentFilter.VARIANT_SEPARATOR + it.value}
-                .join(ExperimentFilter.EXPERIMENT_SEPARATOR), 'utf-8')
+                .collect { it.key + ExperimentSerializer.VARIANT_SEPARATOR + it.value}
+                .join(ExperimentSerializer.EXPERIMENT_SEPARATOR), 'utf-8')
     }
 
     private boolean cookieContains(String test, String experiment) {
-        URLDecoder.decode(cookie.value, 'utf-8').contains(test + ExperimentFilter.VARIANT_SEPARATOR + experiment)
+        URLDecoder.decode(cookie.value, 'utf-8').contains(test + ExperimentSerializer.VARIANT_SEPARATOR + experiment)
     }
 
     private setupRequestLocaleCountryToBe(String country) {
