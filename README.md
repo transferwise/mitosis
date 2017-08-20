@@ -20,7 +20,7 @@ dependencies {
 
 ## Configuration
 
-Integration with Spring.
+If we wanted to [uniformly distribute](https://en.wikipedia.org/wiki/Uniform_distribution_(continuous)) `a` and `b` variants for an experiment `test` across the requests of our application, the configuration would be
 
 ```java
 @Bean
@@ -70,6 +70,32 @@ In Thymeleaf templates.
     }
 </script>
 ```
+
+## Forcing an experiment variant
+
+Variants are uniformly distributed automatically. A way of forcing a specific experiment variant, so you can share and preview the experiment, is to pass the preferred variant as a request parameter.
+
+In an experiment configuration like the following
+
+```java
+@Bean
+public Filter experimentFilter() {
+    ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
+
+    filter.prepare("test1", Arrays.asList("a", "b"));
+    filter.prepare("test2", Arrays.asList("c", "d"));
+
+    return filter;
+}
+```
+
+You can force the test `test1` to variant `b` by setting the `activate` query parameter in the following way
+
+    https://yoursite.com/?activate=test1:b
+
+Worth mentioning that if you have multiple experiments running and you want to force multiple variants you can do
+
+    https://yoursite.com/?activate=test1:b,test2:c
 
 ## Advanced use
 
