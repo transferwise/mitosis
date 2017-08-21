@@ -8,30 +8,32 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Function;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+
+import static com.transferwise.mitosis.ExperimentSerializer.deserialize;
+import static com.transferwise.mitosis.ExperimentSerializer.serialize;
 
 public class ExperimentFilter implements Filter {
-    static final String VARIANT_SEPARATOR = ":";
-    static final String EXPERIMENT_SEPARATOR = ",";
-    private static final String FORMAT = "^[a-z](-?[a-z0-9])*$";
-
     private final int cookieExpiry;
     private final String cookieName;
     private final String requestAttribute;
     private final String requestParameter;
-    private Map<String, Set<String>> experiments = new HashMap<>();
-    private Map<String, Predicate<HttpServletRequest>> filters = new HashMap<>();
+    private final ExperimentEngine experimentEngine;
 
     public ExperimentFilter(int cookieExpiry, String cookieName, String requestAttribute, String requestParameter) {
         this.cookieExpiry = cookieExpiry;
         this.cookieName = cookieName;
         this.requestAttribute = requestAttribute;
         this.requestParameter = requestParameter;
+        experimentEngine = new ExperimentEngine();
+    }
+
+    public static ExperimentFilter defaults() {
+        return new ExperimentFilter(3600 * 24 * 30, "ab", "experiments", "activate");
     }
 
     public void prepare(String name, List<String> variants) {
@@ -39,20 +41,7 @@ public class ExperimentFilter implements Filter {
     }
 
     public void prepare(String name, List<String> variants, Predicate<HttpServletRequest> filter) {
-        assertValidValue(name);
-        variants.forEach(ExperimentFilter::assertValidValue);
-
-        experiments.put(name, new HashSet<>(variants));
-
-        if (filter != null) {
-            filters.put(name, filter);
-        }
-    }
-
-    private static void assertValidValue(String value) {
-        if (!value.matches(FORMAT)) {
-            throw new RuntimeException("Invalid value " + value);
-        }
+        experimentEngine.prepare(name, variants, filter);
     }
 
     @Override
@@ -60,110 +49,36 @@ public class ExperimentFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-        Map<String, String> currentExperiments = clean(currentExperiments(request));
-        currentExperiments.putAll(experimentsMissingIn(currentExperiments, request));
+        Map<String, String> experiments = experimentEngine.calculateExperiments(existingExperiments(request), request);
 
-        request.setAttribute(requestAttribute, currentExperiments);
-        response.addCookie(createCookie(currentExperiments));
+        request.setAttribute(requestAttribute, experiments);
+        response.addCookie(createCookie(experiments));
 
         chain.doFilter(request, response);
     }
 
-    private Map<String, String> experimentsMissingIn(Map<String, String> currentExperiments, HttpServletRequest request) {
-        return differenceWith(currentExperiments.keySet())
-                .stream()
-                .filter(experiment -> {
-                    Predicate<HttpServletRequest> filter = filters.get(experiment);
-                    return filter == null || filter.test(request);
-                })
-                .collect(Collectors.toMap(Function.identity(), this::pickVariantFor));
-    }
-
-    private String pickVariantFor(String experiment) {
-        Set<String> variations = experiments.get(experiment);
-        int index = ThreadLocalRandom.current().nextInt(variations.size());
-        Iterator<String> i = variations.iterator();
-        for (int j = 0; j < index; j++) {
-            i.next();
-        }
-        return i.next();
-    }
-
-    private Set<String> differenceWith(Set<String> currentExperiments) {
-        Set<String> difference = new HashSet<>(experiments.keySet());
-        difference.removeAll(currentExperiments);
-        return difference;
-    }
-
-    private Map<String, String> clean(Map<String, String> currentExperiments) {
-        return cleanVariants(cleanExperiments(currentExperiments));
-    }
-
-    private Map<String, String> cleanExperiments(Map<String, String> currentExperiments) {
-        Map<String, String> cleaned = new HashMap<>(currentExperiments);
-        cleaned.keySet().retainAll(experiments.keySet());
-
-        return cleaned;
-    }
-
-    private Map<String, String> cleanVariants(Map<String, String> experiments) {
-        return experiments.entrySet()
-                .stream()
-                .filter(e -> isValidVariant(e.getKey(), e.getValue()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    private boolean isValidVariant(String experiment, String variant) {
-        return experiments.get(experiment).contains(variant);
-    }
-
-    private Map<String, String> currentExperiments(HttpServletRequest r) {
+    private Map<String, String> existingExperiments(HttpServletRequest r) {
         Map<String, String> all = new HashMap<>();
-        all.putAll(cookieExperiments(r));
-        all.putAll(parameterExperiments(r));
+
+        Cookie cookie = getCookie(r, cookieName);
+        if (cookie != null) {
+            all.putAll(deserialize(urlDecode(cookie.getValue())));
+        }
+
+        String parameterExperiments = r.getParameter(requestParameter);
+        if (parameterExperiments != null) {
+            all.putAll(deserialize(parameterExperiments));
+        }
 
         return all;
     }
 
-    private Map<String, String> parameterExperiments(HttpServletRequest r) {
-        String parameterExperiments = r.getParameter(requestParameter);
-
-        if (parameterExperiments == null) {
-            return new HashMap<>();
-        }
-
-        return deserialize(parameterExperiments);
-    }
-
-    private Map<String, String> cookieExperiments(HttpServletRequest r) {
+    private static Cookie getCookie(HttpServletRequest r, String name) {
         return Arrays
-                .stream(getCookies(r))
-                .filter(c -> c.getName().equals(cookieName))
+                .stream(r.getCookies() != null ? r.getCookies() : new Cookie[0])
+                .filter(c -> c.getName().equals(name))
                 .findFirst()
-                .map(c -> deserialize(urlDecode(c.getValue())))
-                .orElse(new HashMap<>());
-    }
-
-    private static Map<String, String> deserialize(String value) {
-        return Arrays
-                .stream(value.split(Pattern.quote(EXPERIMENT_SEPARATOR)))
-                .filter(exp -> exp.contains(VARIANT_SEPARATOR))
-                .collect(Collectors.toMap(
-                        exp -> exp.split(VARIANT_SEPARATOR)[0],
-                        exp -> exp.split(VARIANT_SEPARATOR)[1]
-                ));
-    }
-
-    private static Cookie[] getCookies(HttpServletRequest r) {
-        return r.getCookies() != null ? r.getCookies() : new Cookie[0];
-    }
-
-    private static String urlEncode(String value) {
-        try {
-            return URLEncoder.encode(value, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
+                .orElse(null);
     }
 
     private static String urlDecode(String value) {
@@ -181,16 +96,19 @@ public class ExperimentFilter implements Filter {
         return c;
     }
 
-    private static String serialize(Map<String, String> experiments) {
-        return experiments.entrySet()
-                .stream()
-                .map(e -> e.getKey() + VARIANT_SEPARATOR + e.getValue())
-                .collect(Collectors.joining(EXPERIMENT_SEPARATOR));
+    private static String urlEncode(String value) {
+        try {
+            return URLEncoder.encode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {}
+    public void init(FilterConfig filterConfig) throws ServletException {
+    }
 
     @Override
-    public void destroy() {}
+    public void destroy() {
+    }
 }
