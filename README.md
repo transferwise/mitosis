@@ -99,7 +99,7 @@ Worth mentioning that if you have multiple experiments running and you want to f
 
 ## Advanced use
 
-You can use lambda functions tu create more complex filters, so you will split your traffic only under controled circunstances.
+You can use lambda functions to create more complex filters, so you will split your traffic only under controled circumstances.
 Let's imagine you want to run your test only for people visiting some urls starting with "/path":
 
 
