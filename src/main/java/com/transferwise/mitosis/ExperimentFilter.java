@@ -36,12 +36,16 @@ public class ExperimentFilter implements Filter {
         return new ExperimentFilter(3600 * 24 * 30, "ab", "experiments", "activate");
     }
 
-    public void prepare(String name, List<String> variants) {
+    public ExperimentFilter prepare(String name, List<String> variants) {
         prepare(name, variants, null);
+
+        return this;
     }
 
-    public void prepare(String name, List<String> variants, Predicate<HttpServletRequest> filter) {
+    public ExperimentFilter prepare(String name, List<String> variants, Predicate<HttpServletRequest> filter) {
         experimentEngine.prepare(name, variants, filter);
+
+        return this;
     }
 
     @Override
