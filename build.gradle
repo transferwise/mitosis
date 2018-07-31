@@ -1,8 +1,10 @@
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'idea'
 
 group = 'com.github.transferwise'
+version = '1.1.0'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -34,6 +36,14 @@ artifacts {
 
 task wrapper(type: Wrapper) {
     gradleVersion = '3.1'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
 }
 
 install {

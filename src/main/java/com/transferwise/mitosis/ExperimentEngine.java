@@ -53,7 +53,7 @@ class ExperimentEngine {
 
     private Map<String, String> removeInvalidExperiments(Map<String, String> experiments) {
         Map<String, String> cleaned = new HashMap<>(experiments);
-        cleaned.keySet().retainAll(this.experimentConfig.keySet());
+        cleaned.keySet().retainAll(experimentConfig.keySet());
 
         return cleaned;
     }
