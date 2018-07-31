@@ -14,7 +14,7 @@ allprojects {
 }
 
 dependencies {
-    compile 'com.github.transferwise:mitosis:1.0.1'
+    compile 'com.github.transferwise:mitosis:1.1.0'
 }
 ```
 
@@ -25,11 +25,8 @@ If we wanted to [uniformly distribute](https://en.wikipedia.org/wiki/Uniform_dis
 ```java
 @Bean
 public Filter experimentFilter() {
-    ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
-
-    filter.prepare("test", asList("a", "b"));
-
-    return filter;
+    return ExperimentFilter.builder().build()
+        .prepare("test-cta", asList("old", "new"));
 }
 ```
 
@@ -80,12 +77,9 @@ In an experiment configuration like the following
 ```java
 @Bean
 public Filter experimentFilter() {
-    ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
-
-    filter.prepare("test1", asList("a", "b"));
-    filter.prepare("test2", asList("c", "d"));
-
-    return filter;
+    return ExperimentFilter.builder().build()
+        .prepare("test1", asList("a", "b"))
+        .prepare("test2", asList("c", "d"));
 }
 ```
 
@@ -106,11 +100,8 @@ Let's imagine you want to run your test only for people visiting some urls start
 ```java 
 @Bean
 public Filter experimentFilter() {
-    ExperimentFilter filter = new ExperimentFilter(3600 * 24 * 14, "ab", "experiments", "activate");
-
-    filter.prepare("test", asList("a", "b"), r -> r.getRequestURI().contains("/path"));
-
-    return filter;
+    return ExperimentFilter.builder().build()
+        .prepare("test", asList("a", "b"), r -> r.getRequestURI().contains("/path"));
 }
 
 ``` 

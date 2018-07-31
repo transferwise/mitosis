@@ -14,15 +14,22 @@ class ExperimentFilterSpec extends Specification {
     private static final String REQUEST_ATTRIBUTE = 'experiments'
     private static final String REQUEST_PARAMETER = 'experiments'
 
-    ExperimentFilter filter
-    HttpServletRequest request
-    HttpServletResponse response
-    Cookie cookie = new Cookie(COOKIE_NAME, 'irrelevant')
-    Map<String, String> experiments = [:]
-    String parameter = ''
+    private ExperimentFilter filter
+    private HttpServletRequest request
+    private HttpServletResponse response
+    private Cookie cookie = new Cookie(COOKIE_NAME, 'irrelevant')
+    private Map<String, String> experiments = [:]
+    private String path = '/default'
+    private String parameter = ''
 
     def setup() {
-        filter = new ExperimentFilter(3600, COOKIE_NAME, REQUEST_ATTRIBUTE, REQUEST_PARAMETER);
+        filter = ExperimentFilter.builder()
+                .cookieExpiry(3600)
+                .cookieName(COOKIE_NAME)
+                .requestAttribute(REQUEST_ATTRIBUTE)
+                .requestParameter(REQUEST_PARAMETER)
+                .blacklistPath('/assets/')
+                .build()
         request = createRequestMock()
         response = createResponseMock()
     }
@@ -151,6 +158,16 @@ class ExperimentFilterSpec extends Specification {
         then: cookie.value == ''
     }
 
+    def 'it should not run the experiment based on blacklisted path'() {
+        setup:
+            path = '/assets/path'
+            filter.prepare('test', ['a'])
+
+        when: doFilter()
+
+        then: cookie.value == 'irrelevant'
+    }
+
     private setupCookie(Map map) {
         cookie.value = URLEncoder.encode(map
                 .collect { it.key + ExperimentSerializer.VARIANT_SEPARATOR + it.value}
@@ -178,6 +195,7 @@ class ExperimentFilterSpec extends Specification {
         request.getCookies() >> { cookie }
         request.setAttribute(REQUEST_ATTRIBUTE, _) >> { _, Map<String, String> exps -> experiments = exps }
         request.getParameter(REQUEST_PARAMETER) >> { parameter }
+        request.getServletPath() >> { path }
 
         request
     }

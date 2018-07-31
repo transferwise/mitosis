@@ -1,6 +1,11 @@
 package com.transferwise.mitosis;
 
-import javax.servlet.*;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -23,17 +28,79 @@ public class ExperimentFilter implements Filter {
     private final String requestAttribute;
     private final String requestParameter;
     private final ExperimentEngine experimentEngine;
+    private final String blacklistPath;
 
-    public ExperimentFilter(int cookieExpiry, String cookieName, String requestAttribute, String requestParameter) {
-        this.cookieExpiry = cookieExpiry;
-        this.cookieName = cookieName;
-        this.requestAttribute = requestAttribute;
-        this.requestParameter = requestParameter;
+    private ExperimentFilter(Builder builder) {
+        this.cookieExpiry = builder.cookieExpiry;
+        this.cookieName = builder.cookieName;
+        this.requestAttribute = builder.requestAttribute;
+        this.requestParameter = builder.requestParameter;
+        this.blacklistPath = builder.blacklistPath;
         experimentEngine = new ExperimentEngine();
     }
 
+    public static class Builder {
+        /**
+         * Expiration time of cookie in seconds
+         */
+        private int cookieExpiry = 3600 * 24 * 30;//a month
+
+        /**
+         * Name of the cookie to keep the experimetns
+         */
+        private String cookieName = "ab";
+
+        /**
+         * Name of the request attribute to pass down the experiments assigned
+         */
+        private String requestAttribute = "experiments";
+
+        /**
+         * Name of parameter of the request for manual experiment activation
+         */
+        private String requestParameter = "activate";
+
+        /**
+         * Path for blacklisting running experiments
+         */
+        private String blacklistPath;
+
+        public Builder cookieExpiry(int cookieExpiry) {
+            this.cookieExpiry = cookieExpiry;
+            return this;
+        }
+
+        public Builder cookieName(String cookieName) {
+            this.cookieName = cookieName;
+            return this;
+        }
+
+        public Builder requestAttribute(String requestAttribute) {
+            this.requestAttribute = requestAttribute;
+            return this;
+        }
+
+        public Builder requestParameter(String requestParameter) {
+            this.requestParameter = requestParameter;
+            return this;
+        }
+
+        public Builder blacklistPath(String blacklistPath) {
+            this.blacklistPath = blacklistPath;
+            return this;
+        }
+
+        public ExperimentFilter build() {
+            return new ExperimentFilter(this);
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public static ExperimentFilter defaults() {
-        return new ExperimentFilter(3600 * 24 * 30, "ab", "experiments", "activate");
+        return builder().build();
     }
 
     public ExperimentFilter prepare(String name, List<String> variants) {
@@ -52,6 +119,11 @@ public class ExperimentFilter implements Filter {
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
+
+        if (blacklistPath != null && request.getServletPath().startsWith(blacklistPath)) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         Map<String, String> experiments = experimentEngine.calculateExperiments(existingExperiments(request), request);
 
@@ -109,7 +181,7 @@ public class ExperimentFilter implements Filter {
     }
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
+    public void init(FilterConfig filterConfig) {
     }
 
     @Override
