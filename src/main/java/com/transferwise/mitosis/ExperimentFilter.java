@@ -103,14 +103,22 @@ public class ExperimentFilter implements Filter {
         return builder().build();
     }
 
+    @Deprecated
     public ExperimentFilter prepare(String name, List<String> variants) {
         prepare(name, variants, null);
 
         return this;
     }
 
+    @Deprecated
     public ExperimentFilter prepare(String name, List<String> variants, Predicate<HttpServletRequest> filter) {
-        experimentEngine.prepare(name, variants, filter);
+        experimentEngine.register(new UserExperiment(name, variants, filter));
+
+        return this;
+    }
+
+    public ExperimentFilter prepare(Experiment experiment) {
+        experimentEngine.register(experiment);
 
         return this;
     }
@@ -125,7 +133,12 @@ public class ExperimentFilter implements Filter {
             return;
         }
 
-        Map<String, String> experiments = experimentEngine.calculateExperiments(existingExperiments(request), request);
+        Map<String, String> experiments = experimentEngine.refreshVariants(existingExperiments(request), request);
+
+        String parameterExperiments = servletRequest.getParameter(requestParameter);
+        if (parameterExperiments != null) {
+            experiments.putAll(experimentEngine.cleanVariants(deserialize(parameterExperiments)));
+        }
 
         request.setAttribute(requestAttribute, experiments);
         response.addCookie(createCookie(experiments));
@@ -139,11 +152,6 @@ public class ExperimentFilter implements Filter {
         Cookie cookie = getCookie(r, cookieName);
         if (cookie != null) {
             all.putAll(deserialize(urlDecode(cookie.getValue())));
-        }
-
-        String parameterExperiments = r.getParameter(requestParameter);
-        if (parameterExperiments != null) {
-            all.putAll(deserialize(parameterExperiments));
         }
 
         return all;
