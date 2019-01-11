@@ -27,4 +27,8 @@ public class RequestFilter {
             return headerValue != null && headerValue.toLowerCase().contains(value.toLowerCase());
         };
     }
+
+    public static Predicate<HttpServletRequest> applyToPercentageOfPaths(int percentage) {
+        return request -> Math.abs(request.getServletPath().hashCode()) % 100 < percentage;
+    }
 }
