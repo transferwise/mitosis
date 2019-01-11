@@ -1,87 +1,44 @@
 package com.transferwise.mitosis;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-class ExperimentEngine {
-    private static final String NAME_FORMAT = "^[a-z](-?[a-z0-9])*$";
+public class ExperimentEngine {
 
-    private final Map<String, Set<String>> experimentConfig = new HashMap<>();
-    private final Map<String, Predicate<HttpServletRequest>> filters = new HashMap<>();
+    private final Set<Experiment> experiments = new HashSet<>();
 
-    void prepare(String name, List<String> variants, Predicate<HttpServletRequest> filter) {
-        assertValidName(name);
-        variants.forEach(ExperimentEngine::assertValidName);
+    public void register(Experiment experiment) {
+        experiments.add(experiment);
+    }
 
-        experimentConfig.put(name, new HashSet<>(variants));
+    public Map<String, String> refreshVariants(Map<String, String> variants, HttpServletRequest request) {
+        return experiments.stream()
+                .filter(e -> e.filter == null || e.filter.test(request))
+                .collect(Collectors.toMap(e -> e.name, e -> refresh(e, request, variants.get(e.name))));
+    }
 
-        if (filter != null) {
-            filters.put(name, filter);
+    private String refresh(Experiment experiment, HttpServletRequest request, String variant) {
+        if (variant == null) {
+            return experiment.chooseVariant(request);
         }
-    }
 
-    private static void assertValidName(String name) {
-        if (!name.matches(NAME_FORMAT)) {
-            throw new RuntimeException("Invalid experiment name value " + name);
+        if (experiment instanceof SeoExperiment) {
+            return experiment.chooseVariant(request);
         }
-    }
 
-    Map<String, String> calculateExperiments(Map<String, String> existingExperiments, HttpServletRequest request) {
-        Map<String, String> cleanedExperiments = new HashMap<>(clean(existingExperiments));
-
-        Map<String, String> newExperiments = differenceWith(cleanedExperiments.keySet())
-                .stream()
-                .filter(experiment -> {
-                    Predicate<HttpServletRequest> filter = filters.get(experiment);
-                    return filter == null || filter.test(request);
-                })
-                .collect(Collectors.toMap(Function.identity(), this::pickVariantFor));
-
-
-        cleanedExperiments.putAll(newExperiments);
-
-        return cleanedExperiments;
-    }
-
-    private Map<String, String> clean(Map<String, String> requestExperiments) {
-        return removeInvalidVariants(removeInvalidExperiments(requestExperiments));
-    }
-
-    private Map<String, String> removeInvalidExperiments(Map<String, String> experiments) {
-        Map<String, String> cleaned = new HashMap<>(experiments);
-        cleaned.keySet().retainAll(experimentConfig.keySet());
-
-        return cleaned;
-    }
-
-    private Map<String, String> removeInvalidVariants(Map<String, String> experiments) {
-        return experiments.entrySet()
-                .stream()
-                .filter(e -> isValidVariant(e.getKey(), e.getValue()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    private String pickVariantFor(String experiment) {
-        Set<String> variations = experimentConfig.get(experiment);
-        int index = ThreadLocalRandom.current().nextInt(variations.size());
-        Iterator<String> i = variations.iterator();
-        for (int j = 0; j < index; j++) {
-            i.next();
+        if (!experiment.isValidVariant(variant)) {
+            return experiment.chooseVariant(request);
         }
-        return i.next();
+
+        return variant;
     }
 
-    private Set<String> differenceWith(Set<String> currentExperiments) {
-        Set<String> difference = new HashSet<>(experimentConfig.keySet());
-        difference.removeAll(currentExperiments);
-        return difference;
-    }
-
-    private boolean isValidVariant(String experiment, String variant) {
-        return experimentConfig.get(experiment).contains(variant);
+    public Map<String, String> cleanVariants(Map<String, String> variants) {
+        return experiments.stream()
+                .filter(e -> variants.containsKey(e.name) && e.isValidVariant(variants.get(e.name)))
+                .collect(Collectors.toMap(e -> e.name, e -> variants.get(e.name)));
     }
 }

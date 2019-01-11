@@ -26,9 +26,20 @@ If we wanted to [uniformly distribute](https://en.wikipedia.org/wiki/Uniform_dis
 @Bean
 public Filter experimentFilter() {
     return ExperimentFilter.builder().build()
-        .prepare("test-cta", asList("old", "new"));
+        .prepare(new UserExperiment("test", asList(["a", "b"])));
 }
 ```
+
+If we wanted to uniformly distribute `a` and `b` variants for an experiment `test` across the request *paths* of our application, the configuration would be
+
+```java
+public Filter experimentFilter() {
+    return ExperimentFilter.builder().build()
+        .prepare(new SeoExperiment("test", asList(["a", "b"])));
+}
+```
+
+For a SeoExperiment a given path will always return the same variant (unless overridden by request parameters).
 
 ## Usage
 
@@ -78,8 +89,8 @@ In an experiment configuration like the following
 @Bean
 public Filter experimentFilter() {
     return ExperimentFilter.builder().build()
-        .prepare("test1", asList("a", "b"))
-        .prepare("test2", asList("c", "d"));
+        .prepare(new UserExperiment("test1", asList("a", "b")))
+        .prepare(new UserExperiment("test2", asList("c", "d")));
 }
 ```
 
@@ -93,7 +104,7 @@ Worth mentioning that if you have multiple experiments running and you want to f
 
 ## Advanced use
 
-You can use lambda functions to create more complex filters, so you will split your traffic only under controled circumstances.
+You can use lambda functions to create more complex filters, so you will split your traffic only under controlled circumstances.
 Let's imagine you want to run your test only for people visiting some urls starting with "/path":
 
 

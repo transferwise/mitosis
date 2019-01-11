@@ -40,7 +40,7 @@ class ExperimentFilterSpec extends Specification {
 
     @Unroll
     def 'experiment name #name should be invalid'() {
-        when: filter.prepare(name, [])
+        when: filter.prepare(name, ['a'])
 
         then: thrown RuntimeException
 
