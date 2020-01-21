@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.transferwise.mitosis.ExperimentSerializer.deserialize;
 import static com.transferwise.mitosis.ExperimentSerializer.serialize;
@@ -29,6 +31,8 @@ public class ExperimentFilter implements Filter {
     private final String requestParameter;
     private final ExperimentEngine experimentEngine;
     private final String blacklistPath;
+    private final String cookieConsentCookieName;
+    private final Pattern cookieConsentAcceptedPattern;
 
     private ExperimentFilter(Builder builder) {
         this.cookieExpiry = builder.cookieExpiry;
@@ -36,6 +40,8 @@ public class ExperimentFilter implements Filter {
         this.requestAttribute = builder.requestAttribute;
         this.requestParameter = builder.requestParameter;
         this.blacklistPath = builder.blacklistPath;
+        this.cookieConsentCookieName = builder.cookieConsentCookieName;
+        this.cookieConsentAcceptedPattern = builder.cookieConsentAcceptedPattern;
         experimentEngine = new ExperimentEngine();
     }
 
@@ -65,6 +71,17 @@ public class ExperimentFilter implements Filter {
          */
         private String blacklistPath;
 
+        /**
+         * Name of cookie that stores whether or not the user has accepted the cookie consent
+         */
+        private String cookieConsentCookieName;
+
+        /**
+         * Regex pattern matching the expected value of the cookieConsentCookie when the cookie consent has been
+         * accepted
+         */
+        private Pattern cookieConsentAcceptedPattern;
+
         public Builder cookieExpiry(int cookieExpiry) {
             this.cookieExpiry = cookieExpiry;
             return this;
@@ -87,6 +104,12 @@ public class ExperimentFilter implements Filter {
 
         public Builder blacklistPath(String blacklistPath) {
             this.blacklistPath = blacklistPath;
+            return this;
+        }
+
+        public Builder cookieConsent(String cookieConsentCookieName, String cookieConsentAcceptedRegex) {
+            this.cookieConsentCookieName = cookieConsentCookieName;
+            this.cookieConsentAcceptedPattern = Pattern.compile(cookieConsentAcceptedRegex);
             return this;
         }
 
@@ -128,6 +151,11 @@ public class ExperimentFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
 
+        if (cookieConsentRequired() && !cookieConsentAccepted(request)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         if (blacklistPath != null && request.getServletPath().startsWith(blacklistPath)) {
             chain.doFilter(request, response);
             return;
@@ -155,6 +183,23 @@ public class ExperimentFilter implements Filter {
         }
 
         return all;
+    }
+
+    private boolean cookieConsentRequired() {
+        return cookieConsentCookieName != null;
+    }
+
+    private boolean cookieConsentAccepted(HttpServletRequest request) {
+        Cookie cookieConsentCookie = getCookie(request, cookieConsentCookieName);
+
+        if (cookieConsentCookie == null || cookieConsentCookie.getValue() == null) {
+            return false;
+        }
+
+        String value = urlDecode(cookieConsentCookie.getValue());
+        Matcher matcher = cookieConsentAcceptedPattern.matcher(value);
+
+        return matcher.find();
     }
 
     private static Cookie getCookie(HttpServletRequest r, String name) {
