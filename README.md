@@ -124,3 +124,25 @@ Mitosis provides a handful request filters that can be combined at will. If we w
 ```java
 filter.prepare("test", asList("a", "b"), languageEquals("en").and(userAgentContains("googlebot").negate()));
 ```
+
+## Cookie Consent
+
+When building the experiment filter you may optionally configure a cookie consent check.
+
+If a cookie with the cookie consent cookie name does not exist then mitosis will not set any cookies.
+
+If a cookie with the cookie consent cookie name does exist but the value of that cookie does not match the regex provided, mitosis will not set any cookies.
+
+Note that user experiments rely on cookies so may only be run on users who have accepted the cookie consent. SEO experiments do not rely on cookies.
+
+If a cookie with the cookie consent cookie name does exist and the value of that cookie matches the regex provided, mitosis will operate as normal.
+
+```java
+@Bean
+public Filter experimentFilter() {
+    return ExperimentFilter.builder()
+        .cookieConsent("consentCookie", "^1$")
+        .build()
+        .prepare("test", asList("a", "b"));
+}
+```
