@@ -168,6 +168,14 @@ class ExperimentFilterSpec extends Specification {
         then: cookie.value == 'irrelevant'
     }
 
+    def 'it should set request attribute to empty map if no experiments configured'() {
+        setup:
+
+        when: doFilter()
+
+        then: experiments.isEmpty()  // as opposed to being null
+    }
+
     private setupCookie(Map map) {
         cookie.value = URLEncoder.encode(map
                 .collect { it.key + ExperimentSerializer.VARIANT_SEPARATOR + it.value}
