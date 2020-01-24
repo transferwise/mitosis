@@ -14,11 +14,14 @@ public class ExperimentEngine {
         experiments.add(experiment);
     }
 
-    public Map<String, String> refreshSeoExperimentVariants(Map<String, String> variants, HttpServletRequest request) {
+    public Map<String, String> seoExperimentVariants(HttpServletRequest request) {
         return experiments.stream()
             .filter(e -> e instanceof SeoExperiment)
             .filter(e -> e.filter == null || e.filter.test(request))
-            .collect(Collectors.toMap(e -> e.name, e -> refresh(e, request, variants.get(e.name))));
+            .collect(Collectors.toMap(
+                e -> e.name,
+                e -> e.chooseVariant(request)
+            ));
     }
 
     public Map<String, String> refreshVariants(Map<String, String> variants, HttpServletRequest request) {

@@ -162,7 +162,7 @@ public class ExperimentFilter implements Filter {
         if (canSetCookies) {
             experiments = experimentEngine.refreshVariants(existingExperiments(request), request);
         } else {
-            experiments = experimentEngine.refreshSeoExperimentVariants(existingExperiments(request), request);
+            experiments = experimentEngine.seoExperimentVariants(request);
         }
 
         String parameterExperiments = servletRequest.getParameter(requestParameter);
