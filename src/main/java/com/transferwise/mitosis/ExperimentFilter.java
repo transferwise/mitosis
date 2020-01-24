@@ -151,17 +151,19 @@ public class ExperimentFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-        if (cookieConsentRequired() && !cookieConsentAccepted(request)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
         if (blacklistPath != null && request.getServletPath().startsWith(blacklistPath)) {
             chain.doFilter(request, response);
             return;
         }
 
-        Map<String, String> experiments = experimentEngine.refreshVariants(existingExperiments(request), request);
+        boolean canSetCookies = canSetCookie(request);
+
+        Map<String, String> experiments;
+        if (canSetCookies) {
+            experiments = experimentEngine.refreshVariants(existingExperiments(request), request);
+        } else {
+            experiments = experimentEngine.seoExperimentVariants(request);
+        }
 
         String parameterExperiments = servletRequest.getParameter(requestParameter);
         if (parameterExperiments != null) {
@@ -169,7 +171,9 @@ public class ExperimentFilter implements Filter {
         }
 
         request.setAttribute(requestAttribute, experiments);
-        response.addCookie(createCookie(experiments));
+        if (canSetCookies) {
+            response.addCookie(createCookie(experiments));
+        }
 
         chain.doFilter(request, response);
     }
@@ -183,6 +187,14 @@ public class ExperimentFilter implements Filter {
         }
 
         return all;
+    }
+
+    private boolean canSetCookie(HttpServletRequest request) {
+        if (cookieConsentRequired() && cookieConsentAccepted(request)) {
+            return true;
+        }
+
+        return !cookieConsentRequired();
     }
 
     private boolean cookieConsentRequired() {

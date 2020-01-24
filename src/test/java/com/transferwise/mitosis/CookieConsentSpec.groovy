@@ -18,9 +18,9 @@ class CookieConsentSpec extends Specification {
     private ExperimentFilter filter
     private HttpServletRequest request
     private HttpServletResponse response
-    private Cookie consentCookie = null
-    private Cookie experimentCookie = null
-    private Map<String, String> experiments = [:]
+    private Cookie consentCookie
+    private Cookie experimentCookie
+    private Map<String, String> experiments  // will be added to the request attributes
     private String path = '/default'
     private String parameter = ''
 
@@ -87,6 +87,34 @@ class CookieConsentSpec extends Specification {
 
         then:
         experimentCookie == null
+        experiments.isEmpty()
+    }
+
+    @Unroll
+    def 'it should set request attributes for SEO experiments regardless of cookie consent'() {
+        setup:
+        filter = ExperimentFilter.builder()
+                .cookieName(EXPERIMENT_COOKIE_NAME)
+                .requestAttribute(REQUEST_ATTRIBUTE)
+                .requestParameter(REQUEST_PARAMETER)
+                .cookieConsent(CONSENT_COOKIE_NAME, '^1$')
+                .build()
+        filter.prepare(new UserExperiment('user', ['a']))
+        filter.prepare(new SeoExperiment('seo', ['a']))
+
+        consentCookie = new Cookie(CONSENT_COOKIE_NAME, URLEncoder.encode(cookieConsentCookieValue, "UTF-8"))
+        experimentCookie = null
+
+        response.addCookie(_) >> { Cookie c -> experimentCookie = c }
+
+        when:
+        filter.doFilter(request, response, Mock(FilterChain))
+
+        then:
+        experiments.seo == 'a'
+
+        where:
+        cookieConsentCookieValue << ['1', '0']
     }
 
     @Unroll
@@ -109,6 +137,7 @@ class CookieConsentSpec extends Specification {
 
         then:
         experimentCookie == null
+        experiments.isEmpty()
 
         where:
         cookieConsentAcceptedRegex | cookieConsentCookieValue
